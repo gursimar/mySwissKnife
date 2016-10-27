@@ -1,5 +1,6 @@
 import pandas as pd
 import difflib
+import base64
 
 def compareCode(code1, code2):
     #print code1
@@ -37,12 +38,12 @@ def compareCode(code1, code2):
             pass
 
     result = {
-        'initial': code1,
-        'final': code2,
-        'diff1_2': '\n'.join(diff1_2),
-        'diff2_1':'\n'.join(diff2_1),
-        'plus': '\n'.join(plus),
-        'minus': '\n'.join(minus)
+        'initial': base64.b64encode(code1),
+        'final': base64.b64encode(code2),
+        'diff1_2': base64.b64encode('\n'.join(diff1_2)),
+        'diff2_1': base64.b64encode('\n'.join(diff2_1)),
+        'plus': base64.b64encode('\n'.join(plus)),
+        'minus': base64.b64encode('\n'.join(minus))
     }
     return result
 
