@@ -79,8 +79,8 @@ def main(speech_file):
                 'sampleRate': 16000,  # 16 khz
                 # See http://g.co/cloud/speech/docs/languages for a list of
                 # supported languages.
-                'languageCode': 'en-US',  # a BCP-47 language tag
-                #'languageCode': 'en-IN',  # a BCP-47 language tag
+                #'languageCode': 'en-US',  # a BCP-47 language tag
+                'languageCode': 'en-IN',  # a BCP-47 language tag
             },
             'audio': {
                 'content': speech_content.decode('UTF-8')
@@ -98,14 +98,61 @@ def main(speech_file):
 # echo %GOOGLE_APPLICATION_CREDENTIALS%
 # sox file.abc --channels=1 --bits=16 --rate=16000 --endian=little audio.flac
 
+def unserializeTranslations():
+    data = pd.DataFrame.from_csv('./data/flac/results.csv')
+
+    files =[]
+    confidencesUS = []
+    transcriptsUS = []
+    confidencesIN = []
+    transcriptsIN = []
+    for index, row in data.iterrows():
+        files.append(row['Files'])
+        try:
+            in_data = json.loads(row['Trans IN'])['results']
+            confidence = []
+            transcript = []
+            for alter in in_data:
+                confidence.append(alter['alternatives'][0]['confidence'])
+                transcript.append(alter['alternatives'][0]['transcript'])
+            confidence = sum(confidence) / len(confidence)
+            transcript = ''.join(transcript)
+            confidencesIN.append(confidence)
+            transcriptsIN.append(transcript)
+        except:
+            confidencesIN.append('')
+            transcriptsIN.append('')
+        try:
+            us_data = json.loads(row['Trans US'])['results']
+            confidence = []
+            transcript = []
+            for alter in us_data:
+                confidence.append(alter['alternatives'][0]['confidence'])
+                transcript.append(alter['alternatives'][0]['transcript'])
+            confidence = sum(confidence)/ len(confidence)
+            transcript = ''.join(transcript)
+            confidencesUS.append(confidence)
+            transcriptsUS.append(transcript)
+        except:
+            confidencesUS.append('')
+            transcriptsUS.append('')
+    results = pd.DataFrame({
+        'Files':files,
+        'transcriptsUS':transcriptsUS,
+        'transcriptsIN': transcriptsIN,
+        'confidencesUS': confidencesUS,
+        'confidencesIN': confidencesIN
+    })
+    results.to_csv('./results/google_ASR_Results.csv')
+
 if __name__ == '__main__':
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\Gursimar\\repos\\python-docs-samples\\speech\\api-client\\simar-ae38c669c730.json"
     #folder = 'data/videos'
-    folder = 'data/samplesall'
+    folder = 'data/flac'
     os.chdir(folder)
     files = []
     results = []
-    for file in glob.glob("*.flac"):
+    for file in glob.glob("*.flac*"):
         print(file)
         try:
             result = main(file)

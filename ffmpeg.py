@@ -1,6 +1,7 @@
 import ffmpy
 import subprocess
 import glob, os
+from pydub import AudioSegment
 
 def convertUsingFfmpy():
      ff = ffmpy.FFmpeg(
@@ -29,12 +30,20 @@ def convertUsingSox(filename, cmd=None):
 
 
 if __name__ == '__main__':
-    folder = 'data/videos'
+    folder = 'data/bhanuvideos'
     os.chdir(folder)
     for file in glob.glob("*.webm"):
         print(file)
         convertUsingFFmpeg(file)
         convertUsingSox(file + '.flac')
+        flac_file = AudioSegment.from_file(file + '.flac.flac', "flac")
+        th = 58000 # 58 s
+        if len(flac_file) > th:
+            first_file = flac_file[:51000]
+            second_file = flac_file[50000:]
+            first_file.export(file + '.flac1.flac', 'flac')
+            second_file.export(file + '.flac2.flac', 'flac')
+        pass
     #for file in glob.glob("*.flac"):
     #    print(file)
     #    convertUsingSox(file)
