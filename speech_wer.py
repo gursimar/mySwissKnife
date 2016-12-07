@@ -1,5 +1,6 @@
 import numpy
 import pandas as pd
+import glob, os, string
 from nltk.corpus import stopwords
 
 class speechAnalyze():
@@ -8,6 +9,43 @@ class speechAnalyze():
         pass
 
     def bagOfWords(self, r, h):
+        r = r.split()
+        h = h.split()
+        words = []
+        for word in h:
+            if word in r:
+                words.append(word)
+
+        words_hey = []
+        r_mod = list(r)
+        for word in h:
+            if word in r_mod:
+                ind = r_mod.index(word)
+                del r_mod[ind]
+                words_hey.append(word)
+
+        #print corr
+        #print len(h)
+        #print len(r)
+        result = {
+            # how many selected items are relevant
+            'precision_all': float(len(words_hey))/len(h),
+            # how many relevant items are selected
+            'recall_all': float(len(words_hey))/len(r),
+
+            # Take unique words in hypothesis and actual
+            'precision_unique': float(len(set(words))) / len(set(h)),
+            'recall_unique': float(len(set(words))) / len(set(r)),
+
+            # Remove a word once its used
+            #'precision_unqiue': float(len(set(words))) / len(set(h)),
+            #'recall_unique': float(len(set(words))) / len(set(r)),
+
+            'comm_words':words_hey
+        }
+        return result
+
+    def bagOfTwWords(self, r, h):
         r = r.split()
         h = h.split()
         words = []
@@ -224,92 +262,100 @@ if __name__ == '__main__':
     #print sa.wer('hi there how are you', 'there are you hell');exit()
 
     # Reference text, Hypothesized text
-    data = pd.DataFrame.from_csv('./results/google_ASR_ResultsFinal.csv')
+    #data = pd.DataFrame.from_csv('./results/google_ASR_ResultsFinal.csv')
+
+    folder = 'results/'
+    os.chdir(folder)
+
     wer_in = []
-    wer_us = []
     precision_in_all = []
-    precision_us_all = []
     recall_in_all = []
-    recall_us_all = []
     precision_in_uniq = []
-    precision_us_uniq = []
     recall_in_uniq = []
-    recall_us_uniq = []
+    precision_in_all_wo_stop = []
+    recall_in_all_wo_stop = []
+    precision_in_uniq_wo_stop = []
+    recall_in_uniq_wo_stop = []
     names = []
-    transcriptsINs = []
-    transcriptsUSs = []
+    transcripts = []
     actuals = []
     common_words_in = []
-    common_words_us = []
     wer_result_in = []
-    wer_result_us = []
-    for index, row in data.iterrows():
-        name = row['Name']
-        names.append(name)
-        print name
-        transcriptsIN = row['transcriptsIN']
-        transcriptsUS = row['transcriptsUS']
-        actual = row['Actual']
+    types = []
+    for file in glob.glob("input_*"):
+        print file
+        data = pd.DataFrame.from_csv(file)
+        for index, row in data.iterrows():
+            name = row['Name']
+            names.append(name)
+            #print name
+            transcript = row['transcript']
+            actual = row['Actual']
 
-        # some preprocessing
-        transcriptsIN.lower()
-        transcriptsUS.lower()
-        actual.lower()
-        actual = "".join(c for c in actual if c not in ('!', '.', ':', ',', ';', '<', '>', '(', ')'))
-        transcriptsINs.append(transcriptsIN)
-        transcriptsUSs.append(transcriptsUS)
-        actuals.append(actual)
+            # some preprocessing
+            transcript = transcript.lower()
+            actual = actual.lower()
+            actual = "".join(c for c in actual if c not in ('!', '.', ':', ',', ';', '<', '>', '(', ')'))
+            transcripts.append(transcript)
+            actuals.append(actual)
 
-        # calculate bag of words error
-        ind = sa.bagOfWords(actual, transcriptsIN)
-        us = sa.bagOfWords(actual, transcriptsUS)
-        precision_in_all.append(ind['precision_all'])
-        precision_us_all.append(us['precision_all'])
-        recall_in_all.append(ind['recall_all'])
-        recall_us_all.append(us['recall_all'])
-        precision_in_uniq.append(ind['precision_unique'])
-        precision_us_uniq.append(us['precision_unique'])
-        recall_in_uniq.append(ind['recall_unique'])
-        recall_us_uniq.append(us['recall_unique'])
-        common_words_in.append(ind['comm_words']),
-        common_words_us.append(us['comm_words'])
+            # calculate bag of words error
+            ind = sa.bagOfWords(actual, transcript)
+            precision_in_all.append(ind['precision_all'])
+            recall_in_all.append(ind['recall_all'])
+            precision_in_uniq.append(ind['precision_unique'])
+            recall_in_uniq.append(ind['recall_unique'])
+            common_words_in.append(ind['comm_words']),
 
-        # calculate wer error
-        try:
-            wer_result_a = sa.wer(actual, transcriptsIN)
-            wer_in.append(wer_result_a['wer'])
-            wer_result_in.append(wer_result_a['diff'])
-        except:
-            wer_in.append(-1)
-            wer_result_in.append("")
+            # calculate bag of words error after removing stop words
+            stop_words = set(stopwords.words('english'))
+            actual_words = actual.split()
+            transcript_words = transcript.split()
+            resultwords = [word for word in actual_words if word.lower() not in stop_words]
+            actual_wo_stop = ' '.join(resultwords)
+            resultwords = [word for word in transcript_words if word.lower() not in stop_words]
+            transcript_wo_stop = ' '.join(resultwords)
+            ind_wo_stop = sa.bagOfWords(actual_wo_stop, transcript_wo_stop)
+            precision_in_all_wo_stop.append(ind_wo_stop['precision_all'])
+            recall_in_all_wo_stop.append(ind_wo_stop['recall_all'])
+            precision_in_uniq_wo_stop.append(ind_wo_stop['precision_unique'])
+            recall_in_uniq_wo_stop.append(ind_wo_stop['recall_unique'])
+            #common_words_in_wo_stop.append(ind_wo_stop['comm_words']),
 
-        try:
-            wer_result_b = sa.wer(actual, transcriptsUS)
-            wer_us.append(wer_result_b['wer'])
-            wer_result_us.append(wer_result_b['diff'])
-        except:
-            wer_us.append(-1)
-            wer_result_us.append("")
+            # calculate wer error
+            try:
+                wer_result_a = sa.wer(actual, transcript)
+                wer_in.append(float(wer_result_a['wer'].replace("%","")))
+                wer_result_in.append(wer_result_a['diff'])
+            except:
+                wer_in.append(-1)
+                wer_result_in.append("")
 
-    results = pd.DataFrame({
-        'name': names,
-        'transcriptsIN': transcriptsINs,
-        'transcriptsUS': transcriptsUSs,
-        'Actual': actuals,
-        'wer_in': wer_in,
-        'precision_in_all': precision_in_all,
-        'recall_in_all':recall_in_all,
-        'precision_in_uniq': precision_in_uniq,
-        'recall_in_uniq':recall_in_uniq,
-        'wer_us': wer_us,
-        'precision_us_all': precision_us_all,
-        'recall_us_all':recall_us_all,
-        'precision_us_uniq': precision_us_uniq,
-        'recall_us_uniq':recall_us_uniq,
-        'common_words_in': common_words_in,
-        'common_words_us': common_words_us,
-        'wer_result_in': wer_result_in,
-        'wer_result_us': wer_result_us
+            temp = string.replace(file, 'input', '')
+            temp = string.replace(temp, '.csv', '')
+            temp = string.replace(temp, '_', '')
+            types.append(temp)
 
-    })
-    results.to_csv('./results/speechStats.csv')
+        results = pd.DataFrame({
+            'name': names,
+            'type': types,
+            'transcriptsIN': transcripts,
+            'Actual': actuals,
+            'wer_in': wer_result_in,
+            'precision_in_all': precision_in_all,
+            'recall_in_all':recall_in_all,
+            'precision_in_uniq': precision_in_uniq,
+            'recall_in_uniq':recall_in_uniq,
+            'precision_in_all_wo_stop': precision_in_all_wo_stop,
+            'recall_in_all_wo_stop':recall_in_all_wo_stop,
+            'precision_in_uniq_wo_stop': precision_in_uniq_wo_stop,
+            'recall_in_uniq_wo_stop':recall_in_uniq_wo_stop,
+            'common_words_in': common_words_in,
+            'wer_result_in': wer_result_in,
+
+        })
+
+    avgs = results.groupby(['type']).mean()
+
+    results.to_csv('speechStatsNew.csv')
+    avgs.to_csv('speechStatsNewAvg.csv')
